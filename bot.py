@@ -48,6 +48,7 @@ from pipecat.runner.utils import create_transport
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
@@ -68,10 +69,18 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ),
     )
 
-    llm = OpenAILLMService(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        settings=OpenAILLMService.Settings(
-            system_instruction="You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
+    # llm = OpenAILLMService(
+    #     api_key=os.getenv("OPENAI_API_KEY"),
+    #     settings=OpenAILLMService.Settings(
+    #         system_instruction="You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
+    #     ),
+    # )
+
+    llm = AnthropicLLMService(
+        api_key=os.getenv("CLAUDE_API_KEY"),
+        settings=AnthropicLLMService.Settings(
+            model="claude-sonnet-4-6",
+            system_instruction="you give facts about history when asked, but don't reply to other types of conversation",
         ),
     )
 
