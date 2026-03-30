@@ -11,7 +11,7 @@ browser and speak with it. You can also deploy this bot to Pipecat Cloud.
 
 Required AI services:
 - Deepgram (Speech-to-Text)
-- OpenAI (LLM)
+- Grok / xAI (LLM)
 - Cartesia (Text-to-Speech)
 
 Run the bot using::
@@ -20,6 +20,7 @@ Run the bot using::
 """
 
 import os
+import random
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -32,7 +33,10 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 
 logger.info("✅ Silero VAD model loaded")
 
+from pipecat.adapters.schemas.function_schema import FunctionSchema
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.frames.frames import LLMRunFrame
+from pipecat.services.llm_service import FunctionCallParams
 
 logger.info("Loading pipeline components...")
 from pipecat.pipeline.pipeline import Pipeline
@@ -47,8 +51,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.openai.llm import OpenAILLMService
-from pipecat.services.anthropic.llm import AnthropicLLMService
+from pipecat.services.google.llm import GoogleLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
@@ -57,8 +60,72 @@ logger.info("✅ All components loaded successfully!")
 load_dotenv(override=True)
 
 
+class BlackjackGame:
+    def __init__(self):
+        self.deck = self._build_deck()
+        self.player_hand = []
+        self.dealer_hand = []
+        self.over = False
+        self._deal_initial()
+
+    def _build_deck(self):
+        values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]
+        return values * 4
+
+    def _deal_initial(self):
+        random.shuffle(self.deck)
+        self.player_hand = [self.deck.pop(), self.deck.pop()]
+        self.dealer_hand = [self.deck.pop(), self.deck.pop()]
+
+    def hand_value(self, hand):
+        total = sum(hand)
+        aces = hand.count(11)
+        while total > 21 and aces:
+            total -= 10
+            aces -= 1
+        return total
+
+    def hit(self):
+        self.player_hand.append(self.deck.pop())
+        value = self.hand_value(self.player_hand)
+        bust = value > 21
+        if bust:
+            self.over = True
+        return {"player_hand": self.player_hand, "player_value": value, "bust": bust}
+
+    def stick(self):
+        while self.hand_value(self.dealer_hand) < 17:
+            self.dealer_hand.append(self.deck.pop())
+        player_val = self.hand_value(self.player_hand)
+        dealer_val = self.hand_value(self.dealer_hand)
+        if dealer_val > 21 or player_val > dealer_val:
+            result = "player_wins"
+        elif player_val == dealer_val:
+            result = "push"
+        else:
+            result = "dealer_wins"
+        self.over = True
+        return {
+            "player_hand": self.player_hand,
+            "player_value": player_val,
+            "dealer_hand": self.dealer_hand,
+            "dealer_value": dealer_val,
+            "result": result,
+        }
+
+    def new_game(self):
+        self.__init__()
+        return {
+            "player_hand": self.player_hand,
+            "player_value": self.hand_value(self.player_hand),
+            "dealer_upcard": self.dealer_hand[0],
+        }
+
+
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     logger.info(f"Starting bot")
+
+    game = BlackjackGame()
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
@@ -69,22 +136,69 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ),
     )
 
-    # llm = OpenAILLMService(
-    #     api_key=os.getenv("OPENAI_API_KEY"),
-    #     settings=OpenAILLMService.Settings(
-    #         system_instruction="You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
-    #     ),
-    # )
+    tools = ToolsSchema(
+        standard_tools=[
+            FunctionSchema(
+                name="hit",
+                description="Player takes another card from the deck.",
+                properties={},
+                required=[],
+            ),
+            FunctionSchema(
+                name="stick",
+                description="Player stands; dealer plays out their hand and the winner is determined.",
+                properties={},
+                required=[],
+            ),
+            FunctionSchema(
+                name="new_game",
+                description="Start a brand new game of blackjack.",
+                properties={},
+                required=[],
+            ),
+        ]
+    )
 
-    llm = AnthropicLLMService(
-        api_key=os.getenv("CLAUDE_API_KEY"),
-        settings=AnthropicLLMService.Settings(
-            model="claude-sonnet-4-6",
-            system_instruction="you give facts about history when asked, but don't reply to other types of conversation",
+    llm = GoogleLLMService(
+        api_key=os.getenv("GOOGLE_GEMINI_API_KEY"),
+        settings=GoogleLLMService.Settings(
+            model="gemini-2.5-flash",
+            system_instruction=(
+                "You are a friendly blackjack dealer. "
+                "When the player says 'hit' or 'hit me', call the hit function. "
+                "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
+                "When the player wants to play again or start a new game, call the new_game function. "
+                "Always narrate the result of each action in a short, conversational sentence. "
+                "If the result includes a 'new_game' field, announce the new hand immediately after."
+            ),
         ),
     )
 
-    context = LLMContext()
+    async def handle_hit(params: FunctionCallParams):
+        result = game.hit()
+        logger.info(f"Hit: {result}")
+        if game.over:
+            new = game.new_game()
+            result["new_game"] = new
+        await params.result_callback(str(result))
+
+    async def handle_stick(params: FunctionCallParams):
+        result = game.stick()
+        logger.info(f"Stick: {result}")
+        new = game.new_game()
+        result["new_game"] = new
+        await params.result_callback(str(result))
+
+    async def handle_new_game(params: FunctionCallParams):
+        result = game.new_game()
+        logger.info(f"New game: {result}")
+        await params.result_callback(str(result))
+
+    llm.register_function("hit", handle_hit)
+    llm.register_function("stick", handle_stick)
+    llm.register_function("new_game", handle_new_game)
+
+    context = LLMContext(tools=tools)
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
@@ -113,9 +227,17 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Client connected")
-        # Kick off the conversation.
+        # Kick off the conversation with the initial hand.
+        initial = {
+            "player_hand": game.player_hand,
+            "player_value": game.hand_value(game.player_hand),
+            "dealer_upcard": game.dealer_hand[0],
+        }
         context.add_message(
-            {"role": "user", "content": "Say hello and briefly introduce yourself."}
+            {
+                "role": "user",
+                "content": f"Deal me in. My starting hand is: {initial}. Welcome me and tell me my hand.",
+            }
         )
         await task.queue_frames([LLMRunFrame()])
 
