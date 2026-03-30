@@ -66,16 +66,13 @@ class BlackjackGame:
         self.player_hand = []
         self.dealer_hand = []
         self.over = False
-        self._deal_initial()
+        self.chips = 100
+        self.current_bet = 0
+        self.awaiting_bet = True
 
     def _build_deck(self):
         values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]
         return values * 4
-
-    def _deal_initial(self):
-        random.shuffle(self.deck)
-        self.player_hand = [self.deck.pop(), self.deck.pop()]
-        self.dealer_hand = [self.deck.pop(), self.deck.pop()]
 
     def hand_value(self, hand):
         total = sum(hand)
@@ -85,13 +82,42 @@ class BlackjackGame:
             aces -= 1
         return total
 
+    def place_bet(self, amount: int):
+        amount = int(amount)
+        if amount <= 0:
+            return {"error": "Bet must be positive"}
+        if amount > self.chips:
+            return {"error": f"Not enough chips. You have {self.chips}"}
+        self.current_bet = amount
+        self.awaiting_bet = False
+        self.deck = self._build_deck()
+        random.shuffle(self.deck)
+        self.player_hand = [self.deck.pop(), self.deck.pop()]
+        self.dealer_hand = [self.deck.pop(), self.deck.pop()]
+        self.over = False
+        return {
+            "player_hand": self.player_hand,
+            "player_value": self.hand_value(self.player_hand),
+            "dealer_upcard": self.dealer_hand[0],
+            "chips": self.chips,
+            "current_bet": self.current_bet,
+        }
+
     def hit(self):
         self.player_hand.append(self.deck.pop())
         value = self.hand_value(self.player_hand)
         bust = value > 21
         if bust:
+            self.chips -= self.current_bet
             self.over = True
-        return {"player_hand": self.player_hand, "player_value": value, "bust": bust}
+            self.awaiting_bet = True
+        return {
+            "player_hand": self.player_hand,
+            "player_value": value,
+            "bust": bust,
+            "chips": self.chips,
+            "current_bet": self.current_bet,
+        }
 
     def stick(self):
         while self.hand_value(self.dealer_hand) < 17:
@@ -100,25 +126,22 @@ class BlackjackGame:
         dealer_val = self.hand_value(self.dealer_hand)
         if dealer_val > 21 or player_val > dealer_val:
             result = "player_wins"
+            self.chips += self.current_bet
         elif player_val == dealer_val:
             result = "push"
         else:
             result = "dealer_wins"
+            self.chips -= self.current_bet
         self.over = True
+        self.awaiting_bet = True
         return {
             "player_hand": self.player_hand,
             "player_value": player_val,
             "dealer_hand": self.dealer_hand,
             "dealer_value": dealer_val,
             "result": result,
-        }
-
-    def new_game(self):
-        self.__init__()
-        return {
-            "player_hand": self.player_hand,
-            "player_value": self.hand_value(self.player_hand),
-            "dealer_upcard": self.dealer_hand[0],
+            "chips": self.chips,
+            "current_bet": self.current_bet,
         }
 
 
@@ -139,6 +162,17 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     tools = ToolsSchema(
         standard_tools=[
             FunctionSchema(
+                name="place_bet",
+                description="Place a bet to start the next round. Must be called before cards are dealt.",
+                properties={
+                    "amount": {
+                        "type": "integer",
+                        "description": "The number of chips to bet.",
+                    }
+                },
+                required=["amount"],
+            ),
+            FunctionSchema(
                 name="hit",
                 description="Player takes another card from the deck.",
                 properties={},
@@ -150,12 +184,6 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                 properties={},
                 required=[],
             ),
-            FunctionSchema(
-                name="new_game",
-                description="Start a brand new game of blackjack.",
-                properties={},
-                required=[],
-            ),
         ]
     )
 
@@ -164,15 +192,33 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         model="grok-3-beta",
         settings=GrokLLMService.Settings(
             system_instruction=(
-                "You are a friendly blackjack dealer. "
+                "You are a friendly blackjack dealer, quick to the point and succinct. "
+                "The player starts with 100 chips. Before each round, ask for a bet. "
+                "When the player says a bet amount (e.g. 'I bet 10', 'bet 20 chips', 'ten'), call place_bet with that amount. "
+                "If place_bet returns an error, tell the player and ask again. "
                 "When the player says 'hit' or 'hit me', call the hit function. "
                 "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
-                "When the player wants to play again or start a new game, call the new_game function. "
-                "Always narrate the result of each action in a short, conversational sentence. "
-                "If the result includes a 'new_game' field, announce the new hand immediately after."
+                "After each round ends (bust or stick result), announce the outcome and their chip total, then ask for their next bet. "
+                "Always narrate the result of each action in a short, conversational sentence."
             ),
         ),
     )
+
+    async def handle_place_bet(params: FunctionCallParams):
+        amount = params.arguments.get("amount", 0)
+        result = game.place_bet(amount)
+        logger.info(f"Place bet: {result}")
+        if "error" in result:
+            await params.result_callback(str(result))
+            return
+        await send_game_state("new_game", {
+            "player_hand": result["player_hand"],
+            "player_value": result["player_value"],
+            "dealer_upcard": result["dealer_upcard"],
+            "chips": result["chips"],
+            "current_bet": result["current_bet"],
+        })
+        await params.result_callback(str(result))
 
     async def handle_hit(params: FunctionCallParams):
         result = game.hit()
@@ -181,15 +227,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "player_hand": result["player_hand"],
             "player_value": result["player_value"],
             "bust": result["bust"],
+            "chips": result["chips"],
+            "current_bet": result["current_bet"],
         })
         if game.over:
-            new = game.new_game()
-            result["new_game"] = new
-            await send_game_state("new_game", {
-                "player_hand": new["player_hand"],
-                "player_value": new["player_value"],
-                "dealer_upcard": new["dealer_upcard"],
-            })
+            await send_game_state("awaiting_bet", {"chips": result["chips"]})
         await params.result_callback(str(result))
 
     async def handle_stick(params: FunctionCallParams):
@@ -201,24 +243,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "dealer_hand": result["dealer_hand"],
             "dealer_value": result["dealer_value"],
             "result": result["result"],
+            "chips": result["chips"],
+            "current_bet": result["current_bet"],
         })
-        new = game.new_game()
-        result["new_game"] = new
-        await send_game_state("new_game", {
-            "player_hand": new["player_hand"],
-            "player_value": new["player_value"],
-            "dealer_upcard": new["dealer_upcard"],
-        })
-        await params.result_callback(str(result))
-
-    async def handle_new_game(params: FunctionCallParams):
-        result = game.new_game()
-        logger.info(f"New game: {result}")
-        await send_game_state("new_game", {
-            "player_hand": result["player_hand"],
-            "player_value": result["player_value"],
-            "dealer_upcard": result["dealer_upcard"],
-        })
+        await send_game_state("awaiting_bet", {"chips": result["chips"]})
         await params.result_callback(str(result))
 
     context = LLMContext(tools=tools)
@@ -255,23 +283,18 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         }
         await task.queue_frames([OutputTransportMessageFrame(message=message)])
 
+    llm.register_function("place_bet", handle_place_bet)
     llm.register_function("hit", handle_hit)
     llm.register_function("stick", handle_stick)
-    llm.register_function("new_game", handle_new_game)
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Client connected")
-        initial = {
-            "player_hand": game.player_hand,
-            "player_value": game.hand_value(game.player_hand),
-            "dealer_upcard": game.dealer_hand[0],
-        }
-        await send_game_state("new_game", initial)
+        await send_game_state("awaiting_bet", {"chips": game.chips})
         context.add_message(
             {
                 "role": "user",
-                "content": f"Deal me in. My starting hand is: {initial}. Welcome me and tell me my hand.",
+                "content": f"I just joined. I have {game.chips} chips. Welcome me and ask me to place my first bet.",
             }
         )
         await task.queue_frames([LLMRunFrame()])

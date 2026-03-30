@@ -18,8 +18,15 @@ function ResultBadge({ result }: { result: GameState["result"] }) {
 }
 
 export default function App() {
-  const { isConnected, isBotSpeaking, gameState, error, connect, disconnect } =
-    usePipecat();
+  const {
+    isConnected,
+    isBotSpeaking,
+    isThinking,
+    gameState,
+    error,
+    connect,
+    disconnect,
+  } = usePipecat();
 
   return (
     <div
@@ -30,7 +37,7 @@ export default function App() {
         padding: "0 16px",
       }}
     >
-      <h1>Blackjack Voice Agent</h1>
+      <h1>Blackjack Voice Agent 🂡</h1>
 
       <div style={{ marginBottom: 16 }}>
         {!isConnected ? (
@@ -49,6 +56,18 @@ export default function App() {
 
       {gameState && (
         <div style={{ lineHeight: 2 }}>
+          {gameState.chips !== undefined && (
+            <div>
+              <strong>Chips:</strong> {gameState.chips}
+              {gameState.current_bet !== undefined &&
+                gameState.current_bet > 0 && (
+                  <span style={{ marginLeft: 16 }}>
+                    <strong>Bet:</strong> {gameState.current_bet}
+                  </span>
+                )}
+            </div>
+          )}
+
           {gameState.player_hand && gameState.player_value !== undefined && (
             <div>
               <strong>Your hand:</strong>{" "}
@@ -82,17 +101,29 @@ export default function App() {
             </div>
           )}
 
+          {gameState.action === "awaiting_bet" && !isBotSpeaking && (
+            <div style={{ marginTop: 12, color: "#555" }}>
+              🎙️ Place your bet to start the round.
+            </div>
+          )}
+
           {(gameState.action === "new_game" || gameState.action === "hit") &&
             !gameState.bust &&
             !isBotSpeaking && (
               <div style={{ marginTop: 12, color: "#555" }}>
-                🎙️ Stick or hit?
+                🎙️ hit or stick?
               </div>
             )}
         </div>
       )}
 
-      {isConnected && !gameState && (
+      {isThinking && (
+        <p style={{ color: "gray", fontStyle: "italic" }}>
+          🧠 Dealer is thinking...
+        </p>
+      )}
+
+      {isConnected && !gameState && !isThinking && (
         <p style={{ color: "gray" }}>Waiting for game state...</p>
       )}
     </div>

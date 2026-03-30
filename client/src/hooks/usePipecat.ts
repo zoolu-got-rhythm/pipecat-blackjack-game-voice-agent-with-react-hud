@@ -11,6 +11,8 @@ export interface GameState {
   dealer_value?: number;
   bust?: boolean;
   result?: "player_wins" | "dealer_wins" | "push";
+  chips?: number;
+  current_bet?: number;
 }
 
 export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
@@ -18,6 +20,7 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isBotSpeaking, setIsBotSpeaking] = useState(true);
+  const [isThinking, setIsThinking] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +37,8 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
 
     client.on(RTVIEvent.Connected, () => setIsConnected(true));
     client.on(RTVIEvent.Disconnected, () => setIsConnected(false));
-    client.on(RTVIEvent.BotStartedSpeaking, () => setIsBotSpeaking(true));
+    client.on(RTVIEvent.UserStoppedSpeaking, () => setIsThinking(true));
+    client.on(RTVIEvent.BotStartedSpeaking, () => { setIsThinking(false); setIsBotSpeaking(true); });
     client.on(RTVIEvent.BotStoppedSpeaking, () => setIsBotSpeaking(false));
     client.on(RTVIEvent.TrackStarted, (track: MediaStreamTrack, participant?: { local?: boolean }) => {
       if (!participant?.local && track.kind === "audio") {
@@ -73,5 +77,5 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
     await clientRef.current?.disconnect();
   }, []);
 
-  return { isConnected, isBotSpeaking, gameState, error, connect, disconnect };
+  return { isConnected, isBotSpeaking, isThinking, gameState, error, connect, disconnect };
 }
