@@ -51,7 +51,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.google.llm import GoogleLLMService
+from pipecat.services.grok.llm import GrokLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
@@ -159,10 +159,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ]
     )
 
-    llm = GoogleLLMService(
-        api_key=os.getenv("GOOGLE_GEMINI_API_KEY"),
-        settings=GoogleLLMService.Settings(
-            model="gemini-2.5-flash",
+    llm = GrokLLMService(
+        api_key=os.getenv("GROK_API_KEY"),
+        model="grok-3-beta",
+        settings=GrokLLMService.Settings(
             system_instruction=(
                 "You are a friendly blackjack dealer. "
                 "When the player says 'hit' or 'hit me', call the hit function. "
