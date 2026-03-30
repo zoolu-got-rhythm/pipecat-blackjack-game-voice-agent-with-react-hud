@@ -35,7 +35,7 @@ logger.info("✅ Silero VAD model loaded")
 
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMRunFrame, OutputTransportMessageFrame
 from pipecat.services.llm_service import FunctionCallParams
 
 logger.info("Loading pipeline components...")
@@ -177,26 +177,49 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async def handle_hit(params: FunctionCallParams):
         result = game.hit()
         logger.info(f"Hit: {result}")
+        await send_game_state("hit", {
+            "player_hand": result["player_hand"],
+            "player_value": result["player_value"],
+            "bust": result["bust"],
+        })
         if game.over:
             new = game.new_game()
             result["new_game"] = new
+            await send_game_state("new_game", {
+                "player_hand": new["player_hand"],
+                "player_value": new["player_value"],
+                "dealer_upcard": new["dealer_upcard"],
+            })
         await params.result_callback(str(result))
 
     async def handle_stick(params: FunctionCallParams):
         result = game.stick()
         logger.info(f"Stick: {result}")
+        await send_game_state("stick", {
+            "player_hand": result["player_hand"],
+            "player_value": result["player_value"],
+            "dealer_hand": result["dealer_hand"],
+            "dealer_value": result["dealer_value"],
+            "result": result["result"],
+        })
         new = game.new_game()
         result["new_game"] = new
+        await send_game_state("new_game", {
+            "player_hand": new["player_hand"],
+            "player_value": new["player_value"],
+            "dealer_upcard": new["dealer_upcard"],
+        })
         await params.result_callback(str(result))
 
     async def handle_new_game(params: FunctionCallParams):
         result = game.new_game()
         logger.info(f"New game: {result}")
+        await send_game_state("new_game", {
+            "player_hand": result["player_hand"],
+            "player_value": result["player_value"],
+            "dealer_upcard": result["dealer_upcard"],
+        })
         await params.result_callback(str(result))
-
-    llm.register_function("hit", handle_hit)
-    llm.register_function("stick", handle_stick)
-    llm.register_function("new_game", handle_new_game)
 
     context = LLMContext(tools=tools)
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -224,15 +247,27 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ),
     )
 
+    async def send_game_state(action: str, data: dict):
+        message = {
+            "label": "rtvi-ai",
+            "type": "server-message",
+            "data": {"type": "game_state", "action": action, **data},
+        }
+        await task.queue_frames([OutputTransportMessageFrame(message=message)])
+
+    llm.register_function("hit", handle_hit)
+    llm.register_function("stick", handle_stick)
+    llm.register_function("new_game", handle_new_game)
+
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"Client connected")
-        # Kick off the conversation with the initial hand.
         initial = {
             "player_hand": game.player_hand,
             "player_value": game.hand_value(game.player_hand),
             "dealer_upcard": game.dealer_hand[0],
         }
+        await send_game_state("new_game", initial)
         context.add_message(
             {
                 "role": "user",
