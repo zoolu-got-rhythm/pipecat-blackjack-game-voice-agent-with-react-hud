@@ -18,11 +18,19 @@ function ResultBadge({ result }: { result: GameState["result"] }) {
 }
 
 export default function App() {
-  const { isConnected, isBotSpeaking, gameState, error, connect, disconnect } = usePipecat();
+  const { isConnected, isBotSpeaking, gameState, error, connect, disconnect } =
+    usePipecat();
 
   return (
-    <div style={{ fontFamily: "monospace", maxWidth: 480, margin: "40px auto", padding: "0 16px" }}>
-      <h1>Blackjack</h1>
+    <div
+      style={{
+        fontFamily: "monospace",
+        maxWidth: 480,
+        margin: "40px auto",
+        padding: "0 16px",
+      }}
+    >
+      <h1>Blackjack Voice Agent</h1>
 
       <div style={{ marginBottom: 16 }}>
         {!isConnected ? (
@@ -44,7 +52,10 @@ export default function App() {
           {gameState.player_hand && gameState.player_value !== undefined && (
             <div>
               <strong>Your hand:</strong>{" "}
-              <Hand cards={gameState.player_hand} value={gameState.player_value} />
+              <Hand
+                cards={gameState.player_hand}
+                value={gameState.player_value}
+              />
               {gameState.bust && <span style={{ color: "red" }}> BUST</span>}
             </div>
           )}
@@ -58,7 +69,10 @@ export default function App() {
           {gameState.dealer_hand && gameState.dealer_value !== undefined && (
             <div>
               <strong>Dealer hand:</strong>{" "}
-              <Hand cards={gameState.dealer_hand} value={gameState.dealer_value} />
+              <Hand
+                cards={gameState.dealer_hand}
+                value={gameState.dealer_value}
+              />
             </div>
           )}
 
@@ -68,11 +82,13 @@ export default function App() {
             </div>
           )}
 
-          {(gameState.action === "new_game" || gameState.action === "hit") && !gameState.bust && !isBotSpeaking && (
-            <div style={{ marginTop: 12, color: "#555" }}>
-              🎙️ Stick or hit?
-            </div>
-          )}
+          {(gameState.action === "new_game" || gameState.action === "hit") &&
+            !gameState.bust &&
+            !isBotSpeaking && (
+              <div style={{ marginTop: 12, color: "#555" }}>
+                🎙️ Stick or hit?
+              </div>
+            )}
         </div>
       )}
 

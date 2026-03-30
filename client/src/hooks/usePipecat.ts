@@ -17,7 +17,7 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
   const clientRef = useRef<PipecatClient | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isBotSpeaking, setIsBotSpeaking] = useState(false);
+  const [isBotSpeaking, setIsBotSpeaking] = useState(true);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
