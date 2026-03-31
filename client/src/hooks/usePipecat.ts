@@ -49,7 +49,11 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
     client.on(RTVIEvent.ServerMessage, (data: unknown) => {
       const msg = data as { type?: string } & GameState;
       if (msg.type === "game_state") {
-        setGameState(msg as GameState);
+        setGameState(prev =>
+          msg.action === "new_game"
+            ? (msg as GameState)
+            : { ...prev, ...msg } as GameState
+        );
       }
     });
     client.on(RTVIEvent.Error, (err: unknown) => {
