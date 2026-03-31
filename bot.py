@@ -49,9 +49,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
-from pipecat.services.cartesia.tts import CartesiaTTSService
-from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.grok.llm import GrokLLMService
+from services_factory import create_llm, create_stt, create_tts
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
@@ -150,14 +148,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     game = BlackjackGame()
 
-    stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
-
-    tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"),
-        settings=CartesiaTTSService.Settings(
-            voice="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Reading Lady
-        ),
-    )
+    stt = create_stt()
+    tts = create_tts()
 
     tools = ToolsSchema(
         standard_tools=[
@@ -187,20 +179,16 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ]
     )
 
-    llm = GrokLLMService(
-        api_key=os.getenv("GROK_API_KEY"),
-        model="grok-3-beta",
-        settings=GrokLLMService.Settings(
-            system_instruction=(
-                "You are a friendly blackjack dealer, quick to the point and succinct. "
-                "The player starts with 100 chips. Before each round, ask for a bet. "
-                "When the player says a bet amount (e.g. 'I bet 10', 'bet 20 chips', 'ten'), call place_bet with that amount. "
-                "If place_bet returns an error, tell the player and ask again. "
-                "When the player says 'hit' or 'hit me', call the hit function. "
-                "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
-                "After each round ends (bust or stick result), announce the outcome and their chip total, then ask for their next bet. "
-                "Always narrate the result of each action in a short, conversational sentence."
-            ),
+    llm = create_llm(
+        system_instruction=(
+            "You are a friendly blackjack dealer, quick to the point and succinct. "
+            "The player starts with 100 chips. Before each round, ask for a bet. "
+            "When the player says a bet amount (e.g. 'I bet 10', 'bet 20 chips', 'ten'), call place_bet with that amount. "
+            "If place_bet returns an error, tell the player and ask again. "
+            "When the player says 'hit' or 'hit me', call the hit function. "
+            "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
+            "After each round ends (bust or stick result), announce the outcome and their chip total, then ask for their next bet. "
+            "Always narrate the result of each action in a short, conversational sentence."
         ),
     )
 
