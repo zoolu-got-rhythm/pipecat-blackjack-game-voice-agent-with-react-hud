@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from "react";
+import Confetti from "react-confetti";
 import { usePipecat, GameState } from "./hooks/usePipecat";
 
 function Hand({ cards, value }: { cards: number[]; value: number }) {
@@ -9,12 +11,14 @@ function Hand({ cards, value }: { cards: number[]; value: number }) {
 }
 
 function ResultBadge({ result }: { result: GameState["result"] }) {
-  const labels: Record<string, string> = {
-    player_wins: "You win!",
-    dealer_wins: "Dealer wins",
-    push: "Push",
+  const config: Record<string, { label: string; color: string }> = {
+    player_wins: { label: "You win!", color: "green" },
+    dealer_wins: { label: "Dealer wins", color: "red" },
+    push: { label: "Push", color: "orange" },
   };
-  return result ? <strong>{labels[result]}</strong> : null;
+  if (!result) return null;
+  const { label, color } = config[result];
+  return <strong style={{ color }}>{label}</strong>;
 }
 
 export default function App() {
@@ -28,7 +32,47 @@ export default function App() {
     disconnect,
   } = usePipecat();
 
+  const [showingResult, setShowingResult] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const lastRoundRef = useRef<Pick<GameState, "player_hand" | "player_value" | "dealer_hand" | "dealer_value" | "dealer_upcard" | "bust" | "result"> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!gameState?.result && !gameState?.bust) return;
+    lastRoundRef.current = {
+      player_hand: gameState.player_hand,
+      player_value: gameState.player_value,
+      dealer_hand: gameState.dealer_hand,
+      dealer_value: gameState.dealer_value,
+      dealer_upcard: gameState.dealer_upcard,
+      bust: gameState.bust,
+      result: gameState.result,
+    };
+    setShowingResult(true);
+    if (gameState.result === "player_wins") setShowConfetti(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setShowingResult(false);
+      lastRoundRef.current = null;
+    }, 5000);
+  }, [gameState?.result, gameState?.bust]);
+
+  const displayHands = showingResult
+    ? lastRoundRef.current
+    : gameState?.action !== "awaiting_bet"
+    ? gameState
+    : null;
+
   return (
+    <>
+      {showConfetti && (
+        <Confetti
+          recycle={false}
+          numberOfPieces={400}
+          gravity={0.4}
+          onConfettiComplete={() => setShowConfetti(false)}
+        />
+      )}
     <div
       style={{
         fontFamily: "monospace",
@@ -58,9 +102,10 @@ export default function App() {
         <div style={{ lineHeight: 2 }}>
           {gameState.chips !== undefined && (
             <div>
-              <strong>Chips:</strong> {gameState.chips}
+              <strong>Chips:</strong> {gameState.current_bet && (gameState.action === "new_game" || gameState.action === "hit") ? gameState.chips! - gameState.current_bet : gameState.chips}
               {gameState.current_bet !== undefined &&
-                gameState.current_bet > 0 && (
+                gameState.current_bet > 0 &&
+                gameState.action !== "awaiting_bet" && (
                   <span style={{ marginLeft: 16 }}>
                     <strong>Bet:</strong> {gameState.current_bet}
                   </span>
@@ -68,37 +113,41 @@ export default function App() {
             </div>
           )}
 
-          {gameState.player_hand && gameState.player_value !== undefined && (
-            <div>
-              <strong>Your hand:</strong>{" "}
-              <Hand
-                cards={gameState.player_hand}
-                value={gameState.player_value}
-              />
-              {gameState.bust && <span style={{ color: "red" }}> BUST</span>}
-            </div>
-          )}
+          {displayHands && (
+            <>
+              {displayHands.player_hand && displayHands.player_value !== undefined && (
+                <div>
+                  <strong>Your hand:</strong>{" "}
+                  <Hand
+                    cards={displayHands.player_hand}
+                    value={displayHands.player_value}
+                  />
+                  {displayHands.bust && <span style={{ color: "red" }}> BUST</span>}
+                </div>
+              )}
 
-          {gameState.dealer_upcard !== undefined && !gameState.dealer_hand && (
-            <div>
-              <strong>Dealer upcard:</strong> {gameState.dealer_upcard}
-            </div>
-          )}
+              {displayHands.dealer_upcard !== undefined && !displayHands.dealer_hand && (
+                <div>
+                  <strong>Dealer upcard:</strong> {displayHands.dealer_upcard}
+                </div>
+              )}
 
-          {gameState.dealer_hand && gameState.dealer_value !== undefined && (
-            <div>
-              <strong>Dealer hand:</strong>{" "}
-              <Hand
-                cards={gameState.dealer_hand}
-                value={gameState.dealer_value}
-              />
-            </div>
-          )}
+              {displayHands.dealer_hand && displayHands.dealer_value !== undefined && (
+                <div>
+                  <strong>Dealer hand:</strong>{" "}
+                  <Hand
+                    cards={displayHands.dealer_hand}
+                    value={displayHands.dealer_value}
+                  />
+                </div>
+              )}
 
-          {gameState.result && (
-            <div style={{ marginTop: 8, fontSize: "1.2em" }}>
-              <ResultBadge result={gameState.result} />
-            </div>
+              {displayHands.result && (
+                <div style={{ marginTop: 8, fontSize: "1.2em" }}>
+                  <ResultBadge result={displayHands.result} />
+                </div>
+              )}
+            </>
           )}
 
           {gameState.action === "awaiting_bet" && !isBotSpeaking && (
@@ -117,7 +166,7 @@ export default function App() {
         </div>
       )}
 
-      {isThinking && (
+{isThinking && (
         <p style={{ color: "gray", fontStyle: "italic" }}>
           🧠 Dealer is thinking...
         </p>
@@ -127,5 +176,6 @@ export default function App() {
         <p style={{ color: "gray" }}>Waiting for game state...</p>
       )}
     </div>
+    </>
   );
 }
