@@ -68,6 +68,12 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
     };
   }, [botUrl]);
 
+  useEffect(() => {
+    if (!isConnected) return;
+    const shouldMute = isBotSpeaking || isThinking;
+    clientRef.current?.enableMic(!shouldMute);
+  }, [isBotSpeaking, isThinking, isConnected]);
+
   const connect = useCallback(async () => {
     setError(null);
     try {

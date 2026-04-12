@@ -187,7 +187,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "If place_bet returns an error, tell the player and ask again. "
             "When the player says 'hit' or 'hit me', call the hit function. "
             "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
-            "After each round ends (bust or stick result), announce the outcome and their chip total, then ask for their next bet. "
+            "After each round ends (bust or stick result), always announce the outcome first (win, loss, or push) before mentioning the dealer's cards or any other details, then state the chip total and ask for their next bet. "
             "Always narrate the result of each action in a short, conversational sentence."
         ),
     )
