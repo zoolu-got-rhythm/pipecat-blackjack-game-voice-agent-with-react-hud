@@ -26,6 +26,12 @@ def create_tts():
                 api_key=os.getenv("OPENAI_API_KEY"),
                 settings=OpenAITTSService.Settings(voice="alloy"),
             )
+        case "deepgram":
+            from pipecat.services.deepgram.tts import DeepgramTTSService
+            return DeepgramTTSService(
+                api_key=os.getenv("DEEPGRAM_API_KEY"),
+                settings=DeepgramTTSService.Settings(voice="aura-2-helena-en"),
+            )
         case _:
             raise ValueError(f"Unknown TTS_PROVIDER: {os.getenv('TTS_PROVIDER')}")
 

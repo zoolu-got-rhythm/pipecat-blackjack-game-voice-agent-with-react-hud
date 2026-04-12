@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+
+const flashStyle = `
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+`;
+
 import Confetti from "react-confetti";
 import { usePipecat, GameState } from "./hooks/usePipecat";
 
@@ -54,7 +62,7 @@ export default function App() {
     timerRef.current = setTimeout(() => {
       setShowingResult(false);
       lastRoundRef.current = null;
-    }, 5000);
+    }, 8000);
   }, [gameState?.result, gameState?.bust]);
 
   const displayHands = showingResult
@@ -65,11 +73,12 @@ export default function App() {
 
   return (
     <>
+      <style>{flashStyle}</style>
       {showConfetti && (
         <Confetti
           recycle={false}
           numberOfPieces={400}
-          gravity={0.4}
+          gravity={0.6}
           onConfettiComplete={() => setShowConfetti(false)}
         />
       )}
@@ -151,7 +160,7 @@ export default function App() {
           )}
 
           {gameState.action === "awaiting_bet" && !isBotSpeaking && (
-            <div style={{ marginTop: 12, color: "#555" }}>
+            <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
               🎙️ Place your bet to start the round.
             </div>
           )}
@@ -159,7 +168,7 @@ export default function App() {
           {(gameState.action === "new_game" || gameState.action === "hit") &&
             !gameState.bust &&
             !isBotSpeaking && (
-              <div style={{ marginTop: 12, color: "#555" }}>
+              <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
                 🎙️ hit or stick?
               </div>
             )}
