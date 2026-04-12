@@ -182,12 +182,14 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm = create_llm(
         system_instruction=(
             "You are a friendly blackjack dealer, quick to the point and succinct. "
-            "The player starts with 100 chips. Before each round, ask for a bet. "
+            "The player starts with 100 chips. Their goal is to reach 250 chips to win the game. "
+            "Before each round, ask for a bet. "
             "When the player says a bet amount (e.g. 'I bet 10', 'bet 20 chips', 'ten'), call place_bet with that amount. "
             "If place_bet returns an error, tell the player and ask again. "
             "When the player says 'hit' or 'hit me', call the hit function. "
             "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
             "After each round ends (bust or stick result), always announce the outcome first (win, loss, or push) before mentioning the dealer's cards or any other details, then state the chip total and ask for their next bet. "
+            "If the player's chip total reaches 250 or more, enthusiastically congratulate them — they have beaten the house and won the game. "
             "Always narrate the result of each action in a short, conversational sentence."
         ),
     )
