@@ -40,6 +40,7 @@ export default function App() {
     error,
     connect,
     disconnect,
+    setMicEnabled,
   } = usePipecat();
 
   const [showingResult, setShowingResult] = useState(false);
@@ -48,12 +49,21 @@ export default function App() {
   const lastRoundRef = useRef<Pick<GameState, "player_hand" | "player_value" | "dealer_hand" | "dealer_value" | "dealer_upcard" | "bust" | "result"> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const brokeAndAwaiting = !gameWon &&
+    gameState?.action === "awaiting_bet" &&
+    (gameState?.chips ?? 1) <= 0;
+
   useEffect(() => {
     if (gameState?.chips !== undefined && gameState.chips >= CHIP_GOAL && !gameWon) {
       setGameWon(true);
       setShowConfetti(true);
+      setMicEnabled(false);
     }
   }, [gameState?.chips]);
+
+  useEffect(() => {
+    if (brokeAndAwaiting) setMicEnabled(false);
+  }, [brokeAndAwaiting]);
 
   useEffect(() => {
     if (!gameState?.result && !gameState?.bust) return;
@@ -186,15 +196,22 @@ export default function App() {
             </>
           )}
 
-          {gameState.action === "awaiting_bet" && !isBotSpeaking && (
+          {gameState.action === "awaiting_bet" && !isBotSpeaking && (gameState.chips ?? 0) > 0 && !gameWon && (
             <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
               🎙️ Place your bet to start the round.
             </div>
           )}
 
+          {brokeAndAwaiting && !isBotSpeaking && (
+            <div style={{ marginTop: 12, color: "red" }}>
+              Out of chips — game over!
+            </div>
+          )}
+
           {(gameState.action === "new_game" || gameState.action === "hit") &&
             !gameState.bust &&
-            !isBotSpeaking && (
+            !isBotSpeaking &&
+            !gameWon && (
               <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
                 🎙️ hit or stick?
               </div>

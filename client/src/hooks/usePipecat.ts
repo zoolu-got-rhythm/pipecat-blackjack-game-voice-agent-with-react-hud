@@ -87,5 +87,9 @@ export function usePipecat(botUrl = "http://localhost:7860/api/offer") {
     await clientRef.current?.disconnect();
   }, []);
 
-  return { isConnected, isBotSpeaking, isThinking, gameState, error, connect, disconnect };
+  const setMicEnabled = useCallback((enabled: boolean) => {
+    clientRef.current?.enableMic(enabled);
+  }, []);
+
+  return { isConnected, isBotSpeaking, isThinking, gameState, error, connect, disconnect, setMicEnabled };
 }
