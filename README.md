@@ -64,6 +64,25 @@ uv run bot.py
 
 **Open http://localhost:7860 in your browser** and click `Connect` to start talking to your bot.
 
+#### Optional: Run the React HUD client
+
+A React-based HUD is available in the `client/` directory. To run it:
+
+1. Install dependencies:
+
+   ```bash
+   cd client
+   npm install
+   ```
+
+2. Start the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+**Open http://localhost:5173 in your browser** to use the React HUD interface.
+
 > 💡 First run note: The initial startup may take ~20 seconds as Pipecat downloads required models and imports.
 
 🎉 **Success!** Your bot is running locally. Now let's deploy it to production so others can use it.
