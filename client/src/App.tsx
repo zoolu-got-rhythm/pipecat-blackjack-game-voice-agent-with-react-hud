@@ -47,9 +47,11 @@ export default function App() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [gameOverConfirmed, setGameOverConfirmed] = useState(false);
+  const [showInitialHands, setShowInitialHands] = useState(false);
   const brokeSpeakingRef = useRef(false);
   const lastRoundRef = useRef<Pick<GameState, "player_hand" | "player_value" | "dealer_hand" | "dealer_value" | "dealer_upcard" | "bust" | "result"> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const brokeAndAwaiting = !gameWon &&
     gameState?.action === "awaiting_bet" &&
@@ -82,6 +84,16 @@ export default function App() {
   }, [brokeAndAwaiting, isBotSpeaking]);
 
   useEffect(() => {
+    if (gameState?.action === "new_game") {
+      setShowInitialHands(false);
+      if (handsTimerRef.current) clearTimeout(handsTimerRef.current);
+      handsTimerRef.current = setTimeout(() => setShowInitialHands(true), 3000);
+    } else if (gameState?.action !== "awaiting_bet") {
+      setShowInitialHands(true);
+    }
+  }, [gameState?.action]);
+
+  useEffect(() => {
     if (!gameState?.result && !gameState?.bust) return;
     lastRoundRef.current = {
       player_hand: gameState.player_hand,
@@ -103,7 +115,7 @@ export default function App() {
 
   const displayHands = showingResult
     ? lastRoundRef.current
-    : gameState?.action !== "awaiting_bet"
+    : gameState?.action !== "awaiting_bet" && showInitialHands
     ? gameState
     : null;
 
