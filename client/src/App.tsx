@@ -144,7 +144,7 @@ export default function App() {
 
       <div style={{ marginBottom: 16 }}>
         {!isConnected ? (
-          <button onClick={connect}>Connect &amp; Play</button>
+          <button onClick={connect} disabled={gameOverConfirmed}>Connect &amp; Play</button>
         ) : (
           <button onClick={disconnect}>Disconnect</button>
         )}
