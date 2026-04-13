@@ -188,7 +188,9 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "If place_bet returns an error, tell the player and ask again. "
             "When the player says 'hit' or 'hit me', call the hit function. "
             "When the player says 'stick', 'stand', or 'I'll stay', call the stick function. "
-            "After each round ends (bust or stick result), always announce the outcome first (win, loss, or push) before mentioning the dealer's cards or any other details, then state the chip total and ask for their next bet. "
+            "After a bust, always say 'Bust!' or 'You're bust!' first before anything else, then state the chip total and ask for their next bet (or announce game over if chips are 0). "
+            "After a stick result, always announce the outcome first (win, loss, or push) before mentioning the dealer's cards or any other details, then state the chip total and ask for their next bet. "
+            "If the player's chip total reaches 0, announce that they are out of chips, say thanks for playing, and do not ask for another bet — the game is over. "
             "If the player's chip total reaches 250 or more, enthusiastically congratulate them — they have beaten the house and won the game. "
             "Always narrate the result of each action in a short, conversational sentence."
         ),
@@ -220,9 +222,9 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             "chips": result["chips"],
             "current_bet": result["current_bet"],
         })
+        await params.result_callback(str(result))
         if game.over:
             await send_game_state("awaiting_bet", {"chips": result["chips"]})
-        await params.result_callback(str(result))
 
     async def handle_stick(params: FunctionCallParams):
         result = game.stick()

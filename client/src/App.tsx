@@ -46,6 +46,8 @@ export default function App() {
   const [showingResult, setShowingResult] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [gameWon, setGameWon] = useState(false);
+  const [gameOverConfirmed, setGameOverConfirmed] = useState(false);
+  const brokeSpeakingRef = useRef(false);
   const lastRoundRef = useRef<Pick<GameState, "player_hand" | "player_value" | "dealer_hand" | "dealer_value" | "dealer_upcard" | "bust" | "result"> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +66,20 @@ export default function App() {
   useEffect(() => {
     if (brokeAndAwaiting) setMicEnabled(false);
   }, [brokeAndAwaiting]);
+
+  useEffect(() => {
+    if (!brokeAndAwaiting) {
+      brokeSpeakingRef.current = false;
+      setGameOverConfirmed(false);
+      return;
+    }
+    if (isBotSpeaking) {
+      brokeSpeakingRef.current = true;
+    } else if (brokeSpeakingRef.current) {
+      setGameOverConfirmed(true);
+      disconnect();
+    }
+  }, [brokeAndAwaiting, isBotSpeaking]);
 
   useEffect(() => {
     if (!gameState?.result && !gameState?.bust) return;
@@ -111,7 +127,7 @@ export default function App() {
           <div style={{ fontSize: "3em", marginBottom: 12 }}>🏆</div>
           <div style={{ fontSize: "2em", fontWeight: "bold", marginBottom: 8 }}>You reached {CHIP_GOAL} chips!</div>
           <div style={{ color: "#aaa", marginBottom: 24 }}>Congratulations, you beat the house!</div>
-          <button onClick={() => { setGameWon(false); disconnect(); }} style={{ padding: "10px 24px", fontSize: "1em" }}>
+          <button onClick={() => window.location.reload()} style={{ padding: "10px 24px", fontSize: "1em" }}>
             Play Again
           </button>
         </div>
@@ -146,12 +162,12 @@ export default function App() {
           {gameState.chips !== undefined && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>
-                <strong>Chips:</strong> {gameState.current_bet && (gameState.action === "new_game" || gameState.action === "hit") ? gameState.chips! - gameState.current_bet : gameState.chips}
+                <strong style={{ color: "#B8860B" }}>Chips:</strong> <span style={{ color: "#B8860B" }}>{gameState.current_bet && (gameState.action === "new_game" || gameState.action === "hit") ? gameState.chips! - gameState.current_bet : gameState.chips}</span>
                 {gameState.current_bet !== undefined &&
                   gameState.current_bet > 0 &&
                   gameState.action !== "awaiting_bet" && (
                     <span style={{ marginLeft: 16 }}>
-                      <strong>Bet:</strong> {gameState.current_bet}
+                      <strong style={{ color: "#B8860B" }}>Bet:</strong> <span style={{ color: "#B8860B" }}>{gameState.current_bet}</span>
                     </span>
                   )}
               </span>
@@ -202,9 +218,9 @@ export default function App() {
             </div>
           )}
 
-          {brokeAndAwaiting && !isBotSpeaking && (
+          {gameOverConfirmed && (
             <div style={{ marginTop: 12, color: "red" }}>
-              Out of chips — game over!
+              Out of chips, game over!
             </div>
           )}
 
