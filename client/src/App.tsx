@@ -87,7 +87,7 @@ export default function App() {
     if (gameState?.action === "new_game") {
       setShowInitialHands(false);
       if (handsTimerRef.current) clearTimeout(handsTimerRef.current);
-      handsTimerRef.current = setTimeout(() => setShowInitialHands(true), 3000);
+      handsTimerRef.current = setTimeout(() => setShowInitialHands(true), 0);
     } else if (gameState?.action !== "awaiting_bet") {
       setShowInitialHands(true);
     }
