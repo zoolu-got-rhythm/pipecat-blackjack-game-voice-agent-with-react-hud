@@ -9,6 +9,7 @@ const flashStyle = `
 
 import Confetti from "react-confetti";
 import { usePipecat, GameState } from "./hooks/usePipecat";
+import VoiceVisualizer from "./components/VoiceVisualizer";
 
 function Hand({ cards, value }: { cards: number[]; value: number }) {
   return (
@@ -49,16 +50,30 @@ export default function App() {
   const [gameOverConfirmed, setGameOverConfirmed] = useState(false);
   const [showInitialHands, setShowInitialHands] = useState(false);
   const brokeSpeakingRef = useRef(false);
-  const lastRoundRef = useRef<Pick<GameState, "player_hand" | "player_value" | "dealer_hand" | "dealer_value" | "dealer_upcard" | "bust" | "result"> | null>(null);
+  const lastRoundRef = useRef<Pick<
+    GameState,
+    | "player_hand"
+    | "player_value"
+    | "dealer_hand"
+    | "dealer_value"
+    | "dealer_upcard"
+    | "bust"
+    | "result"
+  > | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const brokeAndAwaiting = !gameWon &&
+  const brokeAndAwaiting =
+    !gameWon &&
     gameState?.action === "awaiting_bet" &&
     (gameState?.chips ?? 1) <= 0;
 
   useEffect(() => {
-    if (gameState?.chips !== undefined && gameState.chips >= CHIP_GOAL && !gameWon) {
+    if (
+      gameState?.chips !== undefined &&
+      gameState.chips >= CHIP_GOAL &&
+      !gameWon
+    ) {
       setGameWon(true);
       setShowConfetti(true);
       setMicEnabled(false);
@@ -116,8 +131,8 @@ export default function App() {
   const displayHands = showingResult
     ? lastRoundRef.current
     : gameState?.action !== "awaiting_bet" && showInitialHands
-    ? gameState
-    : null;
+      ? gameState
+      : null;
 
   return (
     <>
@@ -131,132 +146,233 @@ export default function App() {
         />
       )}
       {gameWon && (
-        <div style={{
-          position: "fixed", inset: 0, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.75)", zIndex: 10, color: "white", textAlign: "center",
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.75)",
+            zIndex: 10,
+            color: "white",
+            textAlign: "center",
+          }}
+        >
           <div style={{ fontSize: "3em", marginBottom: 12 }}>🏆</div>
-          <div style={{ fontSize: "2em", fontWeight: "bold", marginBottom: 8 }}>You reached {CHIP_GOAL} chips!</div>
-          <div style={{ color: "#aaa", marginBottom: 24 }}>Congratulations, you beat the house!</div>
-          <button onClick={() => window.location.reload()} style={{ padding: "10px 24px", fontSize: "1em" }}>
+          <div style={{ fontSize: "2em", fontWeight: "bold", marginBottom: 8 }}>
+            You reached {CHIP_GOAL} chips!
+          </div>
+          <div style={{ color: "#aaa", marginBottom: 24 }}>
+            Congratulations, you beat the house!
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: "10px 24px", fontSize: "1em" }}
+          >
             Play Again
           </button>
         </div>
       )}
-    <div
-      style={{
-        fontFamily: "monospace",
-        maxWidth: 390,
-        margin: "40px auto",
-        padding: "0 16px",
-      }}
-    >
-      <h1>Blackjack Voice Agent 🂡</h1>
+      <div
+        style={{
+          fontFamily: "monospace",
+          maxWidth: 390,
+          margin: "40px auto",
+          padding: "0 16px",
+        }}
+      >
+        <h1>Blackjack Voice Agent 🂡</h1>
 
-      <div style={{ marginBottom: 16 }}>
-        {!isConnected ? (
-          <button onClick={connect} disabled={gameOverConfirmed}>Connect &amp; Play</button>
-        ) : (
-          <button onClick={disconnect}>Disconnect</button>
+        <div style={{ marginBottom: 16 }}>
+          {!isConnected ? (
+            <button onClick={connect} disabled={gameOverConfirmed}>
+              Connect &amp; Play
+            </button>
+          ) : (
+            <button onClick={disconnect}>Disconnect</button>
+          )}
+          <span
+            style={{ marginLeft: 12, color: isConnected ? "green" : "gray" }}
+          >
+            {isConnected ? "Connected" : "Disconnected"}
+          </span>
+        </div>
+
+        {error && (
+          <div style={{ color: "red", marginBottom: 12 }}>Error: {error}</div>
         )}
-        <span style={{ marginLeft: 12, color: isConnected ? "green" : "gray" }}>
-          {isConnected ? "Connected" : "Disconnected"}
-        </span>
-      </div>
 
-      {error && (
-        <div style={{ color: "red", marginBottom: 12 }}>Error: {error}</div>
-      )}
-
-      {gameState && (
-        <div style={{ lineHeight: 2 }}>
-          {gameState.chips !== undefined && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>
-                <strong style={{ color: "#B8860B" }}>Chips:</strong> <span style={{ color: "#B8860B" }}>{gameState.current_bet && (gameState.action === "new_game" || gameState.action === "hit") ? gameState.chips! - gameState.current_bet : gameState.chips}</span>
-                {gameState.current_bet !== undefined &&
-                  gameState.current_bet > 0 &&
-                  gameState.action !== "awaiting_bet" && (
-                    <span style={{ marginLeft: 16 }}>
-                      <strong style={{ color: "#B8860B" }}>Bet:</strong> <span style={{ color: "#B8860B" }}>{gameState.current_bet}</span>
-                    </span>
-                  )}
-              </span>
-              <span style={{ color: "#888", fontSize: "0.85em", marginRight: "30px" }}>To win reach: {CHIP_GOAL}</span>
-            </div>
-          )}
-
-          {displayHands && (
-            <>
-              {displayHands.player_hand && displayHands.player_value !== undefined && (
-                <div>
-                  <strong>Your hand:</strong>{" "}
-                  <Hand
-                    cards={displayHands.player_hand}
-                    value={displayHands.player_value}
-                  />
-                  {displayHands.bust && <span style={{ color: "red" }}> BUST</span>}
-                </div>
-              )}
-
-              {displayHands.dealer_upcard !== undefined && !displayHands.dealer_hand && (
-                <div>
-                  <strong>Dealer upcard:</strong> {displayHands.dealer_upcard}
-                </div>
-              )}
-
-              {displayHands.dealer_hand && displayHands.dealer_value !== undefined && (
-                <div>
-                  <strong>Dealer hand:</strong>{" "}
-                  <Hand
-                    cards={displayHands.dealer_hand}
-                    value={displayHands.dealer_value}
-                  />
-                </div>
-              )}
-
-              {displayHands.result && (
-                <div style={{ marginTop: 8, fontSize: "1.2em" }}>
-                  <ResultBadge result={displayHands.result} />
-                </div>
-              )}
-            </>
-          )}
-
-          {gameState.action === "awaiting_bet" && !isBotSpeaking && (gameState.chips ?? 0) > 0 && !gameWon && (
-            <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
-              🎙️ Place your bet to start the round.
-            </div>
-          )}
-
-          {gameOverConfirmed && (
-            <div style={{ marginTop: 12, color: "red" }}>
-              Out of chips, game over!
-            </div>
-          )}
-
-          {(gameState.action === "new_game" || gameState.action === "hit") &&
-            !gameState.bust &&
-            !isBotSpeaking &&
-            !gameWon && (
-              <div style={{ marginTop: 12, color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
-                🎙️ hit or stick?
+        {gameState && (
+          <div style={{ lineHeight: 2 }}>
+            {gameState.chips !== undefined && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>
+                  <strong style={{ color: "#B8860B" }}>Chips:</strong>{" "}
+                  <span style={{ color: "#B8860B" }}>
+                    {gameState.current_bet &&
+                    (gameState.action === "new_game" ||
+                      gameState.action === "hit")
+                      ? gameState.chips! - gameState.current_bet
+                      : gameState.chips}
+                  </span>
+                  {gameState.current_bet !== undefined &&
+                    gameState.current_bet > 0 &&
+                    gameState.action !== "awaiting_bet" && (
+                      <span style={{ marginLeft: 16 }}>
+                        <strong style={{ color: "#B8860B" }}>Bet:</strong>{" "}
+                        <span style={{ color: "#B8860B" }}>
+                          {gameState.current_bet}
+                        </span>
+                      </span>
+                    )}
+                </span>
+                <span
+                  style={{
+                    color: "#888",
+                    fontSize: "0.85em",
+                    marginRight: "30px",
+                  }}
+                >
+                  To win reach: {CHIP_GOAL}
+                </span>
               </div>
             )}
+
+            {displayHands && (
+              <>
+                {displayHands.player_hand &&
+                  displayHands.player_value !== undefined && (
+                    <div>
+                      <strong>Your hand:</strong>{" "}
+                      <Hand
+                        cards={displayHands.player_hand}
+                        value={displayHands.player_value}
+                      />
+                      {displayHands.bust && (
+                        <span style={{ color: "red" }}> BUST</span>
+                      )}
+                    </div>
+                  )}
+
+                {displayHands.dealer_upcard !== undefined &&
+                  !displayHands.dealer_hand && (
+                    <div>
+                      <strong>Dealer upcard:</strong>{" "}
+                      {displayHands.dealer_upcard}
+                    </div>
+                  )}
+
+                {displayHands.dealer_hand &&
+                  displayHands.dealer_value !== undefined && (
+                    <div>
+                      <strong>Dealer hand:</strong>{" "}
+                      <Hand
+                        cards={displayHands.dealer_hand}
+                        value={displayHands.dealer_value}
+                      />
+                    </div>
+                  )}
+
+                {displayHands.result && (
+                  <div style={{ marginTop: 8, fontSize: "1.2em" }}>
+                    <ResultBadge result={displayHands.result} />
+                  </div>
+                )}
+              </>
+            )}
+
+            {gameState.action === "awaiting_bet" &&
+              !isBotSpeaking &&
+              !isThinking &&
+              (gameState.chips ?? 0) > 0 &&
+              !gameWon && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    color: "#555",
+                    animation: "flash 1.2s ease-in-out infinite",
+                  }}
+                >
+                  🎙️ Place your bet to start the round.
+                </div>
+              )}
+
+            {gameOverConfirmed && (
+              <div style={{ marginTop: 12, color: "red" }}>
+                Out of chips, game over!
+              </div>
+            )}
+
+            {(gameState.action === "new_game" || gameState.action === "hit") &&
+              !gameState.bust &&
+              !isBotSpeaking &&
+              !isThinking &&
+              !gameWon && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    color: "#555",
+                    animation: "flash 1.2s ease-in-out infinite",
+                  }}
+                >
+                  🎙️ hit or stick?
+                </div>
+              )}
+          </div>
+        )}
+
+        {isThinking && (
+          <p style={{ color: "gray", fontStyle: "italic" }}>
+            🧠 Dealer is thinking...
+          </p>
+        )}
+
+        {isConnected && !gameState && !isThinking && (
+          <p style={{ color: "gray" }}>Waiting for game state...</p>
+        )}
+      </div>
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent: "center",
+          padding: "12px 0",
+          background: "rgba(0,0,0,0.05)",
+        }}
+      >
+        <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+          <VoiceVisualizer
+            barCount={6}
+            width={80}
+            height={48}
+            color="#4a9eff"
+            gap={2}
+          />
+          <span style={{
+            position: "absolute",
+            left: -50,
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontSize: 40,
+            opacity: 0.5,
+            pointerEvents: "none",
+            userSelect: "none",
+          }}>
+            🗣️
+          </span>
         </div>
-      )}
-
-{isThinking && (
-        <p style={{ color: "gray", fontStyle: "italic" }}>
-          🧠 Dealer is thinking...
-        </p>
-      )}
-
-      {isConnected && !gameState && !isThinking && (
-        <p style={{ color: "gray" }}>Waiting for game state...</p>
-      )}
-    </div>
+      </div>
     </>
   );
 }
