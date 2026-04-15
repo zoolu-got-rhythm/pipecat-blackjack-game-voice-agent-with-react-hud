@@ -102,7 +102,7 @@ export default function App() {
     if (gameState?.action === "new_game") {
       setShowInitialHands(false);
       if (handsTimerRef.current) clearTimeout(handsTimerRef.current);
-      handsTimerRef.current = setTimeout(() => setShowInitialHands(true), 0);
+      handsTimerRef.current = setTimeout(() => setShowInitialHands(true), 5000);
     } else if (gameState?.action !== "awaiting_bet") {
       setShowInitialHands(true);
     }
@@ -294,12 +294,30 @@ export default function App() {
               !isThinking &&
               (gameState.chips ?? 0) > 0 &&
               !gameWon && (
-                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#555",
+                      animation: "flash 1.2s ease-in-out infinite",
+                    }}
+                  >
                     🎙️ Place your bet to start the round.
                   </span>
                   <span style={{ fontSize: 25, lineHeight: 1 }}>🗣️</span>
-                  <VoiceVisualizer barCount={6} width={50} height={20} color="#4a9eff" gap={2} />
+                  <VoiceVisualizer
+                    barCount={6}
+                    width={50}
+                    height={20}
+                    color="#4a9eff"
+                    gap={2}
+                  />
                 </div>
               )}
 
@@ -314,12 +332,30 @@ export default function App() {
               !isBotSpeaking &&
               !isThinking &&
               !gameWon && (
-                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#555",
+                      animation: "flash 1.2s ease-in-out infinite",
+                    }}
+                  >
                     🎙️ hit or stick?
                   </span>
                   <span style={{ fontSize: 25, lineHeight: 1 }}>🗣️</span>
-                  <VoiceVisualizer barCount={6} width={50} height={20} color="#4a9eff" gap={2} />
+                  <VoiceVisualizer
+                    barCount={6}
+                    width={50}
+                    height={20}
+                    color="#4a9eff"
+                    gap={2}
+                  />
                 </div>
               )}
           </div>
