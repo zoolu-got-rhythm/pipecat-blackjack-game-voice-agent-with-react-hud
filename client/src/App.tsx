@@ -294,14 +294,12 @@ export default function App() {
               !isThinking &&
               (gameState.chips ?? 0) > 0 &&
               !gameWon && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    color: "#555",
-                    animation: "flash 1.2s ease-in-out infinite",
-                  }}
-                >
-                  🎙️ Place your bet to start the round.
+                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
+                    🎙️ Place your bet to start the round.
+                  </span>
+                  <span style={{ fontSize: 25, lineHeight: 1 }}>🗣️</span>
+                  <VoiceVisualizer barCount={6} width={50} height={20} color="#4a9eff" gap={2} />
                 </div>
               )}
 
@@ -316,14 +314,12 @@ export default function App() {
               !isBotSpeaking &&
               !isThinking &&
               !gameWon && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    color: "#555",
-                    animation: "flash 1.2s ease-in-out infinite",
-                  }}
-                >
-                  🎙️ hit or stick?
+                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#555", animation: "flash 1.2s ease-in-out infinite" }}>
+                    🎙️ hit or stick?
+                  </span>
+                  <span style={{ fontSize: 25, lineHeight: 1 }}>🗣️</span>
+                  <VoiceVisualizer barCount={6} width={50} height={20} color="#4a9eff" gap={2} />
                 </div>
               )}
           </div>
@@ -338,40 +334,6 @@ export default function App() {
         {isConnected && !gameState && !isThinking && (
           <p style={{ color: "gray" }}>Waiting for game state...</p>
         )}
-      </div>
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          display: "flex",
-          justifyContent: "center",
-          padding: "12px 0",
-          background: "rgba(0,0,0,0.05)",
-        }}
-      >
-        <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-          <VoiceVisualizer
-            barCount={6}
-            width={80}
-            height={48}
-            color="#4a9eff"
-            gap={2}
-          />
-          <span style={{
-            position: "absolute",
-            left: -50,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: 40,
-            opacity: 0.5,
-            pointerEvents: "none",
-            userSelect: "none",
-          }}>
-            🗣️
-          </span>
-        </div>
       </div>
     </>
   );
