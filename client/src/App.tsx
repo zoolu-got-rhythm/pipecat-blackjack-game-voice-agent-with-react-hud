@@ -32,6 +32,63 @@ function ResultBadge({ result }: { result: GameState["result"] }) {
 
 const CHIP_GOAL = 250;
 
+function playWinSound() {
+  const ctx = new AudioContext();
+  const now = ctx.currentTime;
+  [523, 659, 784, 1047].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + i * 0.1);
+    gain.gain.setValueAtTime(0, now + i * 0.1);
+    gain.gain.linearRampToValueAtTime(0.35, now + i * 0.1 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.25);
+    osc.start(now + i * 0.1);
+    osc.stop(now + i * 0.1 + 0.26);
+  });
+}
+
+function playLoseSound() {
+  const ctx = new AudioContext();
+  const now = ctx.currentTime;
+  [400, 300].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + i * 0.22);
+    osc.frequency.linearRampToValueAtTime(freq * 0.88, now + i * 0.22 + 0.3);
+    gain.gain.setValueAtTime(0, now + i * 0.22);
+    gain.gain.linearRampToValueAtTime(0.18, now + i * 0.22 + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.22 + 0.35);
+    osc.start(now + i * 0.22);
+    osc.stop(now + i * 0.22 + 0.36);
+  });
+}
+
+function playChipSound() {
+  const ctx = new AudioContext();
+  const now = ctx.currentTime;
+
+  // two quick high-pitched tones for a chip clink
+  [880, 1320].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + i * 0.04);
+    gain.gain.setValueAtTime(0, now + i * 0.04);
+    gain.gain.linearRampToValueAtTime(0.4, now + i * 0.04 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.12);
+    osc.start(now + i * 0.04);
+    osc.stop(now + i * 0.04 + 0.13);
+  });
+}
+
 export default function App() {
   const {
     isConnected,
@@ -97,6 +154,15 @@ export default function App() {
       disconnect();
     }
   }, [brokeAndAwaiting, isBotSpeaking]);
+
+  useEffect(() => {
+    if ((gameState?.current_bet ?? 0) > 0) playChipSound();
+  }, [gameState?.current_bet]);
+
+  useEffect(() => {
+    if (gameState?.result === "player_wins") playWinSound();
+    else if (gameState?.result === "dealer_wins" || gameState?.bust) playLoseSound();
+  }, [gameState?.result, gameState?.bust]);
 
   useEffect(() => {
     if (gameState?.action === "new_game") {
@@ -256,9 +322,6 @@ export default function App() {
                         cards={displayHands.player_hand}
                         value={displayHands.player_value}
                       />
-                      {displayHands.bust && (
-                        <span style={{ color: "red" }}> BUST</span>
-                      )}
                     </div>
                   )}
 
@@ -281,8 +344,9 @@ export default function App() {
                     </div>
                   )}
 
-                {displayHands.result && (
+                {(displayHands.result || displayHands.bust) && (
                   <div style={{ marginTop: 8, fontSize: "1.2em" }}>
+                    {displayHands.bust && <strong style={{ color: "red" }}>Bust!</strong>}
                     <ResultBadge result={displayHands.result} />
                   </div>
                 )}
@@ -328,6 +392,7 @@ export default function App() {
             )}
 
             {(gameState.action === "new_game" || gameState.action === "hit") &&
+              showInitialHands &&
               !gameState.bust &&
               !isBotSpeaking &&
               !isThinking &&
